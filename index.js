@@ -6,6 +6,7 @@ var path = require('path');
 var defaults = require('lodash.defaults');
 var convert = require('convert-source-map');
 var applySourceMap = require('vinyl-sourcemaps-apply');
+var SourceMapConsumer = require('source-map').SourceMapConsumer;
 
 module.exports = function (options) {
   // Mixes in default options.
@@ -44,10 +45,20 @@ module.exports = function (options) {
 
     less.render(str, opts, function (err, css) {
       if (err) {
-
         // convert the keys so PluginError can read them
         err.lineNumber = err.line;
         err.fileName = err.filename;
+
+        if (file.sourceMap) {
+          var smc = new SourceMapConsumer(file.sourceMap);
+          var pos = smc.originalPositionFor({
+              line: err.line,
+              column: err.column
+          });
+          err.lineNumber = pos.line;
+          err.column = pos.column;
+          err.fileName = pos.source;
+        }
 
         // add a better error message
         err.message = err.message + ' in file ' + err.fileName + ' line no. ' + err.lineNumber;
